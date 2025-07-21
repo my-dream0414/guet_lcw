@@ -19,7 +19,6 @@ class UniSampler(BaseSampler):
     属性：
         cross_sampling_flag：交叉采样头尾负样本的标志。
     """
-
     def __init__(self, args):
         super().__init__(args)
         self.cross_sampling_flag = 0
@@ -58,7 +57,6 @@ class UniSampler(BaseSampler):
         '''
         处理之前的数据 3153 11 8874
         处理之后的数据 [11240  8497  6557 14450  4315  5123 12985  3272 11995  4567]
-        
         其中根据处理方式：如果是替换头实体：处理后的数据则全是负样本的头实体
         如果是替换尾实体：处理后的数据则全是负样本的尾实体
         '''
@@ -88,7 +86,6 @@ class UniSampler(BaseSampler):
         batch_data["positive_sample"] = torch.LongTensor(np.array(data))
         batch_data['negative_head'] = torch.LongTensor(np.array(neg_head_list))
         batch_data['negative_tail'] = torch.LongTensor(np.array(neg_tail_list))
-        print(batch_data)
         return batch_data
 
     def get_sampling_keys(self):
@@ -201,9 +198,7 @@ class BernSampler(BaseSampler):
 
 class AdvSampler(BaseSampler):
     """自我对抗负采样，数学表达式：
-
     p\left(h_{j}^{\prime}, r, t_{j}^{\prime} \mid\left\{\left(h_{i}, r_{i}, t_{i}\right)\right\}\right)=\frac{\exp \alpha f_{r}\left(\mathbf{h}_{j}^{\prime}, \mathbf{t}_{j}^{\prime}\right)}{\sum_{i} \exp \alpha f_{r}\left(\mathbf{h}_{i}^{\prime}, \mathbf{t}_{i}^{\prime}\right)}
-
     属性：
         freq_hr：(h, r) 对的数量。
         freq_tr：(t, r) 对的数量。
@@ -216,7 +211,6 @@ class AdvSampler(BaseSampler):
     def sampling(self, pos_sample):
         """
         自我对抗负采样。
-
         Args:
             data: 曾经对三元组进行采样。
         Returns:
@@ -233,7 +227,6 @@ class AdvSampler(BaseSampler):
 
     def calc_freq(self):
         """Calculating the freq_hr and freq_tr.
-
         Returns:
             freq_hr: The count of (h, r) pairs.
             freq_tr: The count of (t, r) pairs.
@@ -263,10 +256,8 @@ class AllSampler(RevSampler):
     def sampling(self, data):
         """
         从合并后的三元组中随机抽样。
-
         参数：
             data：用于抽样的三元组。
-
         返回：
             batch_data：训练数据。
         """
@@ -323,9 +314,7 @@ class CrossESampler(BaseSampler):
 class ConvSampler(RevSampler):  # TODO:SEGNN
     """
     合并具有相同头和关系的三元组，所有假尾实体均视为负样本。
-
     具有相同头和关系的三元组被视为一个三元组。
-
     属性：
         label：将假尾实体屏蔽为负样本。
         triples：用于采样的三元组。
@@ -340,10 +329,8 @@ class ConvSampler(RevSampler):  # TODO:SEGNN
     def sampling(self, pos_hr_t):
         """
         从合并后的三元组中随机抽样。
-
         参数：
             pos_hr_t：用于抽样的三元组 ((head,relation) 对)。
-
         返回：
             batch_data：训练数据。
         """

@@ -14,5 +14,16 @@ def SetupParser():
                         help='The number of negative samples corresponding to each positive sample')
     parser.add_argument('--num_ent', default=None, type=int, help='The number of entity, autogenerate.')
     parser.add_argument('--num_rel', default=None, type=int, help='The number of relation, autogenerate.')
-
+    parser.add_argument('--cuda', default=True, action='store_true', help='使用GPU')
+    parser.add_argument('--max_steps', type=int, default=5000, help='最大训练步数')
+    # # 网络结构参数
+    parser.add_argument('--entity_dim', default=256, type=int, help='实体向量的维度.')
+    parser.add_argument('--relation_dim', default=256, type=int, help='实体向量的维度.')
+    parser.add_argument('--aggregation_type', default=None, type=int, help='实体向量的维度.')
+    parser.add_argument('--mess_dropout', default=None, type=int, help='')
+    parser.add_argument('--conv_dim_list', default=None, type=int, help='')
+    parser.add_argument('--kg_l2loss_lambde', default=None, type=int, help='')
+    # parser.add_argument('--', default=None, type=int, help='')
+    # parser.add_argument('--', default=None, type=int, help='')
+    # parser.add_argument('--', default=None, type=int, help='')
     return parser
