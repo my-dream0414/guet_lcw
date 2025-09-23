@@ -13,7 +13,7 @@ def run():
     args = parser.parse_args()
     kgdata = KGData(args)
     kgdata.get_hr2t_rt2h_from_train()
-    # print(kgdata.train_triples)
+    print(kgdata.train_triples)
     # print(len(kgdata.train_triples))
     unisampler = UniSampler(args)
     unisampler.uni_sampling(kgdata.train_triples)

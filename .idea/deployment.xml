@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="root@connect.westc.gpuhub.com:19318 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="root@connect.nmb2.seetacloud.com:35037 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_457" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="root@connect.westc.gpuhub.com:19318 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_74" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>

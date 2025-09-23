@@ -1,72 +1,67 @@
-# -*- codeing = utf-8 -*-
-# @Time : 2025/7/21 15:32
-# @Author : Luo_CW
-# @File : model.py
-# @Software : PyCharm
+# ---------------------
+# Model components
+# ---------------------
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class KGDM(nn.Module):
-    def __init__(self, num_entities, num_relations, emb_dim, timesteps):
-        super(KGDM, self).__init__()
-        self.emb_dim = emb_dim
-        self.timesteps = timesteps  # T
 
-        # 实体和关系嵌入
-        self.entity_emb = nn.Embedding(num_entities, emb_dim)
-        self.relation_emb = nn.Embedding(num_relations, emb_dim)
+class TimestepEmbedding(nn.Module):
+    def __init__(self, T: int, dim: int, out_dim: int):
+        super().__init__()
+        self.emb = nn.Embedding(T, dim)
+        self.proj = nn.Linear(dim, out_dim)
 
-        # 去噪网络（f_theta）：使用一个简单的 MLP
-        self.denoiser = nn.Sequential(
-            nn.Linear(emb_dim + 1, emb_dim),  # +1 for timestep embedding
-            nn.ReLU(),
-            nn.Linear(emb_dim, emb_dim)
-        )
+    def forward(self, t: torch.Tensor):
+        # t: (B,) 值在 [0, T-1] 范围内
+        return self.proj(self.emb(t))
 
-        # 时间步嵌入（可选）
-        self.timestep_emb = nn.Embedding(timesteps + 1, 1)
+class ScoringModule(nn.Module):
+    def __init__(self, mode: str = 'add'):
+        super().__init__()
+        assert mode in ['add', 'hadamard']
+        self.mode = mode
 
-    def forward_diffusion(self, r, t):
-        """
-        正向扩散：在 r 上添加噪声生成 r_t
-        """
-        noise = torch.randn_like(r)
-        alpha_t = 1 - t / self.timesteps  # 简化的线性噪声调度
-        r_t = alpha_t * r + (1 - alpha_t) * noise
-        return r_t, noise
+    def forward(self, Xh, Xr):
+        if self.mode == 'add':
+            return Xh + Xr
+        else:
+            return Xh * Xr  # Hadamard 积
 
-    def denoise(self, r_t, t):
-        """
-        用于噪声预测的去噪网络 f_theta(r_t, t)
-        """
-        t_emb = self.timestep_emb(t).squeeze(-1)  # shape: (batch, 1)
-        x = torch.cat([r_t, t_emb], dim=-1)
-        pred_noise = self.denoiser(x)
-        return pred_noise
+class CEDenoiserBlock(nn.Module):
+    """一个简单的 MLP 块，具有 LN-pre、残差和残差前的可学习尺度 alpha（Peebles & Xie 2022）。"""
+    def __init__(self, dim: int, hidden: int):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(dim)
+        self.fc1 = nn.Linear(dim, hidden)
+        self.fc2 = nn.Linear(hidden, dim)
+        self.alpha = nn.Parameter(torch.ones(dim))
 
-    def score(self, h, r_t, t_emb, tail):
-        """
-        使用 TransE 风格的 score 函数
-        f(h, r_t, t) = - || h + r_t - t ||
-        """
-        return -torch.norm(h + r_t - tail, p=2, dim=1)
+    def forward(self, x):
+        # Pre-LN
+        y = self.ln1(x)
+        y = F.gelu(self.fc1(y))
+        y = self.fc2(y)
+        # 残差前缩放
+        y = y * self.alpha
+        return x + y
 
-    def forward(self, h_idx, r_idx, t_idx, time_step):
-        """
-        :param h_idx: head entity index (batch,)
-        :param r_idx: relation index (batch,)
-        :param t_idx: tail entity index (batch,)
-        :param time_step: 当前扩散步骤 (batch,)
-        """
-        h = self.entity_emb(h_idx)
-        r = self.relation_emb(r_idx)
-        tail = self.entity_emb(t_idx)
+class CEDenoiser(nn.Module):
+    def __init__(self, vec_dim: int, hidden: int, num_blocks: int):
+        super().__init__()
+        self.blocks = nn.ModuleList([CEDenoiserBlock(vec_dim, hidden) for _ in range(num_blocks)])
+        self.ln = nn.LayerNorm(vec_dim)
+        self.out = nn.Linear(vec_dim, vec_dim)  # predict epsilon
 
-        r_t, noise = self.forward_diffusion(r, time_step)  # 正向扩散生成 r_t
-        pred_noise = self.denoise(r_t, time_step)          # 去噪预测
-        loss_denoise = F.mse_loss(pred_noise, noise)       # 去噪损失
-
-        score_pos = self.score(h, r_t, time_step, tail)    # 正样本打分
-
-        return loss_denoise, score_pos
+    def forward(self, x_t, t_emb, cond):
+        # 通过小型适配器连接并投影到 vec_dim 以提高稳定性
+        # 输入的形状均为 (B,D)。我们将这些输入连接起来，然后使用线性回归得到 D。
+        z = torch.cat([x_t, t_emb, cond], dim=-1)
+        if not hasattr(self, 'adapter'):
+            self.adapter = nn.Linear(z.size(-1), x_t.size(-1)).to(z.device)
+        h = self.adapter(z)
+        for blk in self.blocks:
+            h = blk(h)
+        h = self.ln(h)
+        eps = self.out(h)
+        return eps
