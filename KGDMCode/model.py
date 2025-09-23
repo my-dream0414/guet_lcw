@@ -14,6 +14,7 @@ class TimestepEmbedding(nn.Module):
 
     def forward(self, t: torch.Tensor):
         # t: (B,) 值在 [0, T-1] 范围内
+        # t: (B,) 值在 [0, T-1] 范围内
         return self.proj(self.emb(t))
 
 class ScoringModule(nn.Module):
