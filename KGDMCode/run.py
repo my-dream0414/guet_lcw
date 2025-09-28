@@ -95,22 +95,84 @@ def evaluate(model: KGDM, triples: List[Tuple[int,int,int]], index: KGIndex, sch
 # Main
 # ---------------------
 
+# def main():
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--data_dir', type=str, default='./FB15k-237', help='Directory with train.txt, valid.txt, test.txt')
+#     parser.add_argument('--dataset', type=str, default='FB15k-237')
+#     parser.add_argument('--emb_dim', type=int, default=400)  # base embedding dim
+#     parser.add_argument('--proj_dim', type=int, default=1000)  # projected working dim (paper uses large dims)
+#     parser.add_argument('--num_steps', type=int, default=1000)
+#     parser.add_argument('--hidden', type=int, default=400)
+#     parser.add_argument('--num_blocks', type=int, default=4)
+#     parser.add_argument('--batch_size', type=int, default=256 )
+#     parser.add_argument('--epochs', type=int, default=30)
+#     parser.add_argument('--lr', type=float, default=1e-3)
+#     parser.add_argument('--gamma', type=float, default=1.0)
+#     parser.add_argument('--num_negs', type=int, default=64)
+#     parser.add_argument('--scoring', type=str, default='add', choices=['add','hadamard'],
+#                         help='Use add (FB15k-237) or hadamard (WN18RR/Kinship/UMLS)')
+#     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
+#     args = parser.parse_args()
+#
+#     set_seed(42)
+#     print("开始加载数据")
+#     train_triples = read_triples(os.path.join(args.data_dir, 'train.txt'))
+#     valid_triples = read_triples(os.path.join(args.data_dir, 'valid.txt'))
+#     test_triples  = read_triples(os.path.join(args.data_dir, 'test.txt'))
+#
+#     index = KGIndex(train_triples, valid_triples, test_triples)
+#
+#     # 映射到 ID
+#     train_ids = [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in train_triples]
+#     valid_ids = [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in valid_triples]
+#     test_ids  = [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in test_triples]
+#     print("数据加载完成，开始处理数据！")
+#     train_ds = TripleDataset(train_triples, index)
+#     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, drop_last=True,
+#                               collate_fn=lambda b: [torch.tensor(x) for x in zip(*b)])
+#
+#     device = torch.device(args.device)
+#     print("数据处理完成，开始搭建模型！")
+#     model = KGDM(num_entities=len(index.ent2id), num_relations=len(index.rel2id),
+#                  in_dim=args.emb_dim, proj_dim=args.proj_dim, T=args.num_steps,
+#                  scoring=args.scoring, hidden=args.hidden, num_blocks=args.num_blocks,
+#                  gamma=args.gamma).to(device)
+#
+#     schedule = DiffusionSchedule.create(T=args.num_steps, device=device)
+#
+#     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+#     print("模型搭建完成，开始训练模型！")
+#     for epoch in range(1, args.epochs+1):
+#         loss = train_one_epoch(model, train_loader, schedule, optimizer, device, num_negs=args.num_negs)
+#         print(f"Epoch {epoch}: loss={loss:.4f}")
+#
+#         # 快速验证
+#         val_mrr, val_hits = evaluate(model,
+#                                      [(h,r,t) for (h,r,t) in valid_ids],
+#                                      index, schedule, batch_size=256, device=device)
+#         print(f"  Valid MRR={val_mrr:.4f} | Hits@1={val_hits[1]:.4f} Hits@3={val_hits[3]:.4f} Hits@10={val_hits[10]:.4f}")
+#
+#     # 最终测试
+#     test_mrr, test_hits = evaluate(model,
+#                                    [(h,r,t) for (h,r,t) in test_ids],
+#                                    index, schedule, batch_size=256, device=device)
+#     print(f"TEST  MRR={test_mrr:.4f} | Hits@1={test_hits[1]:.4f} Hits@3={test_hits[3]:.4f} Hits@10={test_hits[10]:.4f}")
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', type=str, default='./FB15k-237', help='Directory with train.txt, valid.txt, test.txt')
+    parser.add_argument('--data_dir', type=str, default='./FB15k-237')
     parser.add_argument('--dataset', type=str, default='FB15k-237')
-    parser.add_argument('--emb_dim', type=int, default=400)  # base embedding dim
-    parser.add_argument('--proj_dim', type=int, default=1000)  # projected working dim (paper uses large dims)
+    parser.add_argument('--emb_dim', type=int, default=400)
+    parser.add_argument('--proj_dim', type=int, default=800)
     parser.add_argument('--num_steps', type=int, default=1000)
-    parser.add_argument('--hidden', type=int, default=1200)
+    parser.add_argument('--hidden', type=int, default=400)
     parser.add_argument('--num_blocks', type=int, default=3)
-    parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=256 )
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--gamma', type=float, default=1.0)
+    parser.add_argument('--gamma', type=float, default=12.0)
     parser.add_argument('--num_negs', type=int, default=64)
-    parser.add_argument('--scoring', type=str, default='add', choices=['add','hadamard'],
-                        help='Use add (FB15k-237) or hadamard (WN18RR/Kinship/UMLS)')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
     args = parser.parse_args()
 
@@ -120,41 +182,36 @@ def main():
     valid_triples = read_triples(os.path.join(args.data_dir, 'valid.txt'))
     test_triples  = read_triples(os.path.join(args.data_dir, 'test.txt'))
 
+    print("数据加载完成，开始处理数据！")
     index = KGIndex(train_triples, valid_triples, test_triples)
 
-    # 映射到 ID
-    train_ids = [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in train_triples]
-    valid_ids = [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in valid_triples]
-    test_ids  = [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in test_triples]
-    print("数据加载完成，开始处理数据！")
     train_ds = TripleDataset(train_triples, index)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, drop_last=True,
                               collate_fn=lambda b: [torch.tensor(x) for x in zip(*b)])
 
-    device = torch.device(args.device)
+
     print("数据处理完成，开始搭建模型！")
+    device = torch.device(args.device)
     model = KGDM(num_entities=len(index.ent2id), num_relations=len(index.rel2id),
                  in_dim=args.emb_dim, proj_dim=args.proj_dim, T=args.num_steps,
-                 scoring=args.scoring, hidden=args.hidden, num_blocks=args.num_blocks,
+                 hidden=args.hidden, num_blocks=args.num_blocks,
                  gamma=args.gamma).to(device)
 
     schedule = DiffusionSchedule.create(T=args.num_steps, device=device)
-
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    print("模型搭建完成，开始训练模型！")
+
+    print("模型构建完成，开始训练模型！")
     for epoch in range(1, args.epochs+1):
         loss = train_one_epoch(model, train_loader, schedule, optimizer, device, num_negs=args.num_negs)
         print(f"Epoch {epoch}: loss={loss:.4f}")
 
-        # 快速验证
         val_mrr, val_hits = evaluate(model,
-                                     [(h,r,t) for (h,r,t) in valid_ids],
+                                     [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in valid_triples],
                                      index, schedule, batch_size=256, device=device)
         print(f"  Valid MRR={val_mrr:.4f} | Hits@1={val_hits[1]:.4f} Hits@3={val_hits[3]:.4f} Hits@10={val_hits[10]:.4f}")
 
-    # 最终测试
     test_mrr, test_hits = evaluate(model,
-                                   [(h,r,t) for (h,r,t) in test_ids],
+                                   [(index.ent2id[h], index.rel2id[r], index.ent2id[t]) for (h,r,t) in test_triples],
                                    index, schedule, batch_size=256, device=device)
     print(f"TEST  MRR={test_mrr:.4f} | Hits@1={test_hits[1]:.4f} Hits@3={test_hits[3]:.4f} Hits@10={test_hits[10]:.4f}")
 
