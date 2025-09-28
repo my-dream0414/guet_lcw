@@ -47,6 +47,7 @@ class KGDM(nn.Module):
                                            time_dim=proj_dim, hidden=hidden, num_blocks=num_blocks)
         self.head_eps = nn.Linear(proj_dim, proj_dim)
         self.head_x0 = nn.Linear(proj_dim, proj_dim)
+        self.align = nn.Linear(proj_dim, proj_dim)
 
         self.T = T
         self.gamma = gamma
@@ -142,11 +143,24 @@ class KGDM(nn.Module):
     def rank_tail(self, h_idx: torch.Tensor, r_idx: torch.Tensor,
                   schedule: DiffusionSchedule, entity_bank: torch.Tensor,
                   filtered: Dict[Tuple[int,int], set], hits_k=(1,3,10)):
-        gen = self.sample_tail(h_idx, r_idx, schedule)
+
+        Xh = self.EMBe(self.ent_emb(h_idx))
+        Xr = self.EMBe(self.rel_emb(r_idx))
+        cond = self.cond_embed(Xh, Xr)
+
+        t_idx = torch.zeros_like(h_idx)
+
+        eps_pred,x0_pred = self.predict(torch.zeros_like(Xh),t_idx,cond)
+
+        # gen = self.sample_tail(h_idx, r_idx, schedule)
+        gen = self.align(x0_pred) #############
+
+
         dists = torch.cdist(gen, entity_bank, p=2)
         ranks = []
         for i in range(gen.size(0)):
-            hi = h_idx[i].item(); ri = r_idx[i].item()
+            hi = h_idx[i].item();
+            ri = r_idx[i].item()
             order = torch.argsort(dists[i])
             ranks.append(order)
         return ranks, dists

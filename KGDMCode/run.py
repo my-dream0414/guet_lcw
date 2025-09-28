@@ -40,7 +40,8 @@ def evaluate(model: KGDM, triples: List[Tuple[int,int,int]], index: KGIndex, sch
     model.eval()
     # 在投影空间中预先计算实体库
     all_ents = torch.arange(len(index.ent2id), device=device)
-    entity_bank = model.EMBe(model.ent_emb(all_ents))  # (N,D)
+    entity_bank = model.align(model.EMBe(model.ent_emb(all_ents)))
+    # entity_bank = model.EMBe(model.ent_emb(all_ents))  # (N,D)#################
 
     def eval_mode(predict_head: bool):
         total_mrr = 0.0
